@@ -141,7 +141,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
 
       await expect(tx)
         .to.emit(proofOfHumanityCirclesProxy, "MemberRegistered")
-        .withArgs(humanityID, circlesAccount);
+        .withArgs(humanityID, circlesAccount, expirationTime);
   
       expect(await proofOfHumanityCirclesProxy.humanityIDToCriclesAccount(humanityID)).to.equal(circlesAccount);
       
@@ -168,7 +168,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
 
       await expect(tx)
         .to.emit(proofOfHumanityCirclesProxy, "MemberRegistered")
-        .withArgs(humanityID, circlesAccount);
+        .withArgs(humanityID, circlesAccount, crossChainExpirationTime);
   
       expect(await proofOfHumanityCirclesProxy.humanityIDToCriclesAccount(humanityID)).to.equal(circlesAccount);
       
@@ -254,7 +254,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       
       await expect(tx)
         .to.emit(proofOfHumanityCirclesProxy, "TrustRenewed")
-        .withArgs(humanityID, circlesAccount);
+        .withArgs(humanityID, circlesAccount, newExpirationTime);
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.lastTrustExpiry()).to.equal(newExpirationTime);
@@ -278,7 +278,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       
       await expect(tx)
         .to.emit(proofOfHumanityCirclesProxy, "TrustRenewed")
-        .withArgs(humanityID, circlesAccount);
+        .withArgs(humanityID, circlesAccount, newCrossChainExpirationTime);
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.lastTrustExpiry()).to.equal(newCrossChainExpirationTime);

@@ -46,9 +46,11 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
 
     /**
      * @dev Emitted when a member is added to the Circles Group
+     * @param humanityID The humanity ID of the member added
      * @param member The address of the member added
+     * @param expirationTime The expiration time of the trust
      */
-    event MemberRegistered(bytes20 indexed humanityID, address indexed member);
+    event MemberRegistered(bytes20 indexed humanityID, address indexed member, uint40 expirationTime);
 
     /**
      * @dev Emitted when members are removed from the Circles Group
@@ -60,13 +62,15 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      * @dev Emitted when a member is renewed in the Circles Group
      * @param humanityID The humanity ID of the account to re-trust
      * @param account The account that was renewed
+     * @param expirationTime The expiration time of the trust
      */
-    event TrustRenewed(bytes20 indexed humanityID, address indexed account);
+    event TrustRenewed(bytes20 indexed humanityID, address indexed account, uint40 expirationTime);
 
     /**
      * @dev Initializes the proxy contract with required external contracts
      * @param _proofOfHumanity Address of the Proof of Humanity registry contract
      * @param _coreMembersGroup Address of the POH Core Members Group contract
+     * @param _crossChainProofOfHumanity Address of the CrossChainProofOfHumanity contract
      */
     constructor(address _proofOfHumanity, address _coreMembersGroup, address _crossChainProofOfHumanity) {
         proofOfHumanity = IProofOfHumanity(_proofOfHumanity);
@@ -137,7 +141,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         accounts[0] = _account;
         coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
 
-        emit MemberRegistered(humanityID, _account);
+        emit MemberRegistered(humanityID, _account, expirationTime);
     }
     
     /**
@@ -162,7 +166,8 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         address[] memory accounts = new address[](1);
         accounts[0] = account;
         coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
-        emit TrustRenewed(humanityID, account);
+        
+        emit TrustRenewed(humanityID, account, expirationTime);
     }
 
   
