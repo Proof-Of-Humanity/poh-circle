@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.28;
 
-
+/**
+ * @title IProofOfHumanity
+ * This interface is a pruned version of https://github.com/Proof-Of-Humanity/proof-of-humanity-v2-contracts/blob/a331e7b6bb0f7a7ad9a905d41032cecc52bf06a6/contracts/ProofOfHumanity.sol
+**/
 interface IProofOfHumanity {
 
     /* Views */
@@ -25,6 +28,4 @@ interface IProofOfHumanity {
             address owner,
             uint256 nbRequests
         );
-
-    function getHumanityCount() external view returns (uint256);
 }

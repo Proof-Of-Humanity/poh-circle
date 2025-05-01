@@ -143,7 +143,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
         .to.emit(proofOfHumanityCirclesProxy, "MemberRegistered")
         .withArgs(humanityID, circlesAccount);
   
-      expect(await proofOfHumanityCirclesProxy.humanityIDToCriclesAccount(humanityID)).to.equal(circlesAccount);
+      expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount);
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.lastTrustExpiry()).to.equal(expirationTime);
@@ -170,8 +170,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
         .to.emit(proofOfHumanityCirclesProxy, "MemberRegistered")
         .withArgs(humanityID, circlesAccount);
   
-      expect(await proofOfHumanityCirclesProxy.humanityIDToCriclesAccount(humanityID)).to.equal(circlesAccount);
-      
+      expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount);
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.lastTrustExpiry()).to.equal(crossChainExpirationTime);
     });
@@ -221,7 +220,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       
       await proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount1);
       
-      expect(await proofOfHumanityCirclesProxy.humanityIDToCriclesAccount(humanityID)).to.equal(circlesAccount1);
+      expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount1);
 
       await expect(
         proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount2)
@@ -315,7 +314,6 @@ describe("ProofOfHumanityCirclesProxy", function () {
     let circlesAccount2: string;
     let humanityID1: string;
     let humanityID2: string;
-    let user1CirclesAccount: string;
 
     beforeEach(async function () {
       humanityID1 = humanityID;
@@ -331,7 +329,6 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const humanityInfo1 = { vouching: false, pendingRevocation: false, nbPendingRequests: 0, expirationTime: expirationTime, owner: user1.address, nbRequests: 1 };
       await proofOfHumanityMock.mockGetHumanityInfo(humanityID1, humanityInfo1);
       await proofOfHumanityCirclesProxy.connect(user1).register(humanityID1, circlesAccount1);
-      user1CirclesAccount = circlesAccount1;
 
       await crossChainProofOfHumanityMock.mockBoundTo(humanityID2, user2.address);
       await proofOfHumanityMock.mockIsHuman(user2.address, true);
@@ -353,8 +350,8 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const tx = await proofOfHumanityCirclesProxy.revokeTrust(humanityIDs);
       
       await expect(tx)
-        .to.emit(proofOfHumanityCirclesProxy, "MembersRemoved")
-        .withArgs(humanityIDs);
+        .to.emit(proofOfHumanityCirclesProxy, "AccountsRemoved")
+        .withArgs(humanityIDs, [circlesAccount1, circlesAccount2]);
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.getLastCalledMembers()).to.deep.equal([circlesAccount1, circlesAccount2]);
@@ -369,8 +366,8 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const tx = await proofOfHumanityCirclesProxy.revokeTrust(humanityIDs);
       
       await expect(tx)
-        .to.emit(proofOfHumanityCirclesProxy, "MembersRemoved")
-        .withArgs(humanityIDs);
+        .to.emit(proofOfHumanityCirclesProxy, "AccountsRemoved")
+        .withArgs(humanityIDs, [circlesAccount1]);
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.getLastCalledMembers()).to.deep.equal([circlesAccount1]);
@@ -382,8 +379,8 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const tx = await proofOfHumanityCirclesProxy.revokeTrust(humanityIDs);
       
       await expect(tx)
-        .to.emit(proofOfHumanityCirclesProxy, "MembersRemoved")
-        .withArgs(humanityIDs);
+        .to.emit(proofOfHumanityCirclesProxy, "AccountsRemoved")
+        .withArgs(humanityIDs, []);
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.getLastCalledMembers()).to.deep.equal([]);

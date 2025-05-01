@@ -33,7 +33,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     ICrossChainProofOfHumanity public crossChainProofOfHumanity;
 
     /// @notice Mapping to store the Circles account for each humanity ID
-    mapping(bytes20 => address) public humanityIDToCriclesAccount;
+    mapping(bytes20 => address) public humanityIDToCirclesAccount;
 
     /**
      * @dev Restricts function access to the governor only
@@ -45,19 +45,22 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     }
 
     /**
-     * @dev Emitted when a member is added to the Circles Group
-     * @param member The address of the member added
+     * @dev Emitted when an account is added to the Circles Group
+     * @param humanityID The humanity ID of the account added
+     * @param account The address of the account added
      */
-    event MemberRegistered(bytes20 indexed humanityID, address indexed member);
+    event AccountRegistered(bytes20 indexed humanityID, address indexed account);
 
     /**
-     * @dev Emitted when members are removed from the Circles Group
-     * @param humanityIDs The humanity IDs of the members removed
+     * @dev Emitted when accounts are removed from the Circles Group
+     * @param humanityIDs The humanity IDs of the accounts removed
+     * @param accounts The addresses of the accounts removed
+     * @notice humanityID at index i corresponds to account at index i
      */
-    event MembersRemoved(bytes20[] humanityIDs);
+    event AccountsRemoved(bytes20[] humanityIDs, address[] accounts);
 
     /**
-     * @dev Emitted when a member is renewed in the Circles Group
+     * @dev Emitted when an account is renewed in the Circles Group
      * @param humanityID The humanity ID of the account to re-trust
      * @param account The account that was renewed
      */
@@ -67,6 +70,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      * @dev Initializes the proxy contract with required external contracts
      * @param _proofOfHumanity Address of the Proof of Humanity registry contract
      * @param _coreMembersGroup Address of the POH Core Members Group contract
+     * @param _crossChainProofOfHumanity Address of the CrossChainProofOfHumanity contract
      */
     constructor(address _proofOfHumanity, address _coreMembersGroup, address _crossChainProofOfHumanity) {
         proofOfHumanity = IProofOfHumanity(_proofOfHumanity);
@@ -85,7 +89,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     }
 
     /**
-     * @dev Updates the address of the Core Members Group contract
+     * @dev Updates the address of the POH Core Members Group contract
      * @param _coreMembersGroup New address for the POH Core Members Group contract
      * Can only be called by the governor
      */
@@ -121,23 +125,28 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         address owner = crossChainProofOfHumanity.boundTo(humanityID);
         require(owner == msg.sender, "You are not the owner of this humanity ID");
 
+        // Check if the humanity is claimed on the current chain
         if(proofOfHumanity.isHuman(owner)){
             (,,,expirationTime,,) = proofOfHumanity.getHumanityInfo(humanityID);
         }
+        // If the humanity is not claimed or expired on the current chain, humanity info was updated in from foreign chain
         else{
             ICrossChainProofOfHumanity.CrossChainHumanity memory crossChainHumanity = crossChainProofOfHumanity.humanityData(humanityID);
+             // If the current chain is the humanity's home chain, CCPOH data can contain stale owner address
             require(!crossChainHumanity.isHomeChain, "Humanity ID is not claimed");
             expirationTime = crossChainHumanity.expirationTime;
         }
 
-        require(humanityIDToCriclesAccount[humanityID] == address(0), "Account is already registered");
-        humanityIDToCriclesAccount[humanityID] = _account;
+        // only one account can be registered for a given humanity ID and is permanently bound to it
+        require(humanityIDToCirclesAccount[humanityID] == address(0), "Account is already registered");
+        humanityIDToCirclesAccount[humanityID] = _account;
         // trust will expire at the same time as the humanity.
         address[] memory accounts = new address[](1);
         accounts[0] = _account;
+        //function will revert if account is a zero address
         coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
 
-        emit MemberRegistered(humanityID, _account);
+        emit AccountRegistered(humanityID, _account);
     }
     
     /**
@@ -154,11 +163,12 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         }
         else{
             ICrossChainProofOfHumanity.CrossChainHumanity memory crossChainHumanity = crossChainProofOfHumanity.humanityData(humanityID);
+            // If the current chain is the humanity's home chain, CCPOH data can contain stale owner address
             require(!crossChainHumanity.isHomeChain, "Humanity ID is not claimed");
             expirationTime = crossChainHumanity.expirationTime;
         }
 
-        address account = humanityIDToCriclesAccount[humanityID];
+        address account = humanityIDToCirclesAccount[humanityID];
         address[] memory accounts = new address[](1);
         accounts[0] = account;
         coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
@@ -178,11 +188,12 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
             humanityID = humanityIDs[i];
             bool isHuman = crossChainProofOfHumanity.isHuman(crossChainProofOfHumanity.boundTo(humanityID));
             require(!isHuman, "Account is still registered as human");
-            accounts[i] = humanityIDToCriclesAccount[humanityID];
+            // mapping of humanityID is not removed, so that we can still renew trust for the account.
+            accounts[i] = humanityIDToCirclesAccount[humanityID];
         }
-        // setting the expiry timestamp to 0 means untrusting the account.
+        // setting the expiry timestamp to 0 or a past timestamp means untrusting the account.
         coreMembersGroup.trustBatchWithConditions(accounts, 0);
 
-        emit MembersRemoved(humanityIDs);
+        emit AccountsRemoved(humanityIDs, accounts);
     }
 }

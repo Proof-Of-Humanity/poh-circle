@@ -74,8 +74,4 @@ contract ProofOfHumanityMock is IProofOfHumanity {
             info.nbRequests
         );
     }
-
-    function getHumanityCount() external view override returns (uint256) {
-        return 0; // Not used in tests
-    }
 } 
