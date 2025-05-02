@@ -57,8 +57,6 @@ describe("ProofOfHumanityCirclesProxy", function () {
     };
     await crossChainProofOfHumanityMock.mockHumanityData(humanityID, crossChainHumanityData);
 
-    await crossChainProofOfHumanityMock.mockIsClaimed(humanityID, false);
-
     await coreMembersGroupMock.reset();
   });
 
@@ -140,7 +138,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const tx = await proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount);
 
       await expect(tx)
-        .to.emit(proofOfHumanityCirclesProxy, "MemberRegistered")
+        .to.emit(proofOfHumanityCirclesProxy, "AccountRegistered")
         .withArgs(humanityID, circlesAccount);
   
       expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount);
@@ -167,7 +165,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const tx = await proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount);
 
       await expect(tx)
-        .to.emit(proofOfHumanityCirclesProxy, "MemberRegistered")
+        .to.emit(proofOfHumanityCirclesProxy, "AccountRegistered")
         .withArgs(humanityID, circlesAccount);
   
       expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount);
@@ -185,7 +183,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       ).to.be.revertedWith("You are not the owner of this humanity ID");
     });
 
-    it("Should revert when humanity ID is not claimed", async function () {
+    it("Should revert when humanity ID is not bound to an address", async function () {
       const circlesAccount = ethers.Wallet.createRandom().address;
       
       await crossChainProofOfHumanityMock.mockBoundTo(humanityID, ethers.ZeroAddress); 
@@ -283,7 +281,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       expect(await coreMembersGroupMock.lastTrustExpiry()).to.equal(newCrossChainExpirationTime);
     });
     
-    it("Should revert if humanity ID is not claimed", async function () {
+    it("Should revert if humanity ID is not bound to an address", async function () {
         await crossChainProofOfHumanityMock.mockBoundTo(humanityID, ethers.ZeroAddress); 
         
         await expect(

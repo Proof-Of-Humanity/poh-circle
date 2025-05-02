@@ -22,10 +22,6 @@ contract ProofOfHumanityMock is IProofOfHumanity {
         _isHuman[_address] = _status;
     }
 
-    function mockIsClaimed(bytes20 _humanityId, bool _status) external {
-        _isClaimed[_humanityId] = _status;
-    }
-
     function mockHumanityOf(address _account, bytes20 _humanityId) external {
         _humanityOf[_account] = _humanityId;
     }
@@ -39,14 +35,6 @@ contract ProofOfHumanityMock is IProofOfHumanity {
 
     function isHuman(address _address) external view override returns (bool) {
         return _isHuman[_address];
-    }
-
-    function isClaimed(bytes20 _humanityId) external view override returns (bool) {
-        return _isClaimed[_humanityId];
-    }
-
-    function humanityOf(address _account) external view override returns (bytes20 humanityId) {
-        return _humanityOf[_account];
     }
 
     function getHumanityInfo(
