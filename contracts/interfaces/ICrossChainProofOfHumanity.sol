@@ -1,29 +1,31 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity >=0.8.28;
 
 /**
  * @title ICrossChainProofOfHumanity
- * @dev interface for the CrossChainProofOfHumanity contract
+ * @dev Interface for the CrossChainProofOfHumanity contract.
+ * This interface is a pruned version of https://github.com/Proof-Of-Humanity/proof-of-humanity-v2-contracts/blob/a331e7b6bb0f7a7ad9a905d41032cecc52bf06a6/contracts/CrossChainProofOfHumanity.sol.
  */
 interface ICrossChainProofOfHumanity {
 
+    /**
+     * @dev Structure to store cross-chain humanity data.
+     */
     struct CrossChainHumanity {
-        address owner; // the owner address
-        uint40 expirationTime; // expirationTime at the moment of update
-        uint40 lastTransferTime; // time of the last received transfer
-        bool isHomeChain; // whether current chain is considered as home chain by this contract
+        address owner; // The owner address.
+        uint40 expirationTime; // Expiration time at the moment of update.
+        uint40 lastTransferTime; // Time of the last received transfer.
+        bool isHomeChain; // Whether current chain is considered as home chain by this contract.
     }
   
+    /**
+     * @dev Returns the data for a specific humanity ID.
+     * @param humanityId The ID of the humanity to query.
+     * @return The humanity data.
+     */
     function humanityData(bytes20 humanityId) external view returns (CrossChainHumanity memory);
 
     // ========== VIEW FUNCTIONS ==========
-
-    /**
-     * @dev Checks whether humanity is claimed or not
-     * @param _humanityId The ID of the humanity to check
-     * @return Whether humanity is claimed
-     */
-    function isClaimed(bytes20 _humanityId) external view returns (bool);
 
     /**
      * @dev Returns the owner address bound to a specific humanity ID.
