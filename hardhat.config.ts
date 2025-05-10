@@ -21,6 +21,16 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
+    chiado: {
+      chainId: 10200,
+      url: process.env.CHIADO_RPC_URL || "https://rpc.chiado.gnosis.gateway.fm",
+      accounts: [process.env.PRIVATE_KEY!]
+    },
+    gnosis: {
+      chainId: 100,
+      url: process.env.GNOSIS_RPC_URL || "https://rpc.gnosischain.com",
+      accounts: [process.env.PRIVATE_KEY!]
+    },
   },
   paths: {
     sources: "./contracts",

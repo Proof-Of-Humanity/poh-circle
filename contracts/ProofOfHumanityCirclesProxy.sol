@@ -13,6 +13,7 @@ import "./interfaces/IProofOfHumanity.sol";
 import "./interfaces/ICoreMembersGroup.sol";
 import "./interfaces/IProofOfHumanityCirclesProxy.sol";
 import "./interfaces/ICrossChainProofOfHumanity.sol";
+import "./interfaces/IHub.sol";
 /**
  * @title ProofOfHumanityCirclesProxy
  * @dev A proxy contract that bridges Proof of Humanity verification with Circles.
@@ -31,6 +32,9 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
 
     /// @notice Reference to the CrossChainProofOfHumanity contract.
     ICrossChainProofOfHumanity public crossChainProofOfHumanity;
+
+    /// @notice Reference to the Circles Hub contract.
+    IHub public hub;
 
     /// @notice Mapping to store the Circles account for each humanity ID.
     mapping(bytes20 => address) public humanityIDToCirclesAccount;
@@ -71,11 +75,13 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      * @param _proofOfHumanity Address of the Proof of Humanity registry contract.
      * @param _coreMembersGroup Address of the POH Core Members Group contract.
      * @param _crossChainProofOfHumanity Address of the CrossChainProofOfHumanity contract.
+     * @param _hub Address of the Circles Hub contract.
      */
-    constructor(address _proofOfHumanity, address _coreMembersGroup, address _crossChainProofOfHumanity) {
+    constructor(address _proofOfHumanity, address _coreMembersGroup, address _crossChainProofOfHumanity, address _hub) {
         proofOfHumanity = IProofOfHumanity(_proofOfHumanity);
         coreMembersGroup = ICoreMembersGroup(_coreMembersGroup);
         crossChainProofOfHumanity = ICrossChainProofOfHumanity(_crossChainProofOfHumanity);
+        hub = IHub(_hub);
         governor = msg.sender; // Set deployer as initial governor
     }
 
@@ -104,6 +110,15 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      */
     function changeCrossChainProofOfHumanity(address _crossChainProofOfHumanity) external onlyGovernor {
         crossChainProofOfHumanity = ICrossChainProofOfHumanity(_crossChainProofOfHumanity);
+    }
+
+    /**
+     * @dev Updates the address of the Circles Hub contract.
+     * @param _hub New address for the Circles Hub contract.
+     * Can only be called by the governor.
+     */
+    function changeHub(address _hub) external onlyGovernor {
+        hub = IHub(_hub);
     }
 
     /**
@@ -143,6 +158,10 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         // Trust will expire at the same time as the humanity.
         address[] memory accounts = new address[](1);
         accounts[0] = _account;
+        // If multiple humanities are linked to the same account, always use the maximum expiration time among them.
+        (, uint96 currentHubExpiry) = hub.trustMarkers(address(coreMembersGroup), _account);
+        require(uint96(expirationTime) >= currentHubExpiry, "Cannot decrease trust expiry");
+
         // Function will revert if account is a zero address.
         coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
 
@@ -171,7 +190,12 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         address account = humanityIDToCirclesAccount[humanityID];
         address[] memory accounts = new address[](1);
         accounts[0] = account;
+        // Prevent decreasing expiry
+        (, uint96 currentHubExpiry) = hub.trustMarkers(address(coreMembersGroup), account);
+        require(uint96(expirationTime) >= currentHubExpiry, "Cannot decrease trust expiry");
+
         coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
+        
         emit TrustRenewed(humanityID, account);
     }
 

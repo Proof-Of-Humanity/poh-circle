@@ -26,6 +26,12 @@ interface IProofOfHumanityCirclesProxy {
     function changeCrossChainProofOfHumanity(address _crossChainProofOfHumanity) external;
 
     /**
+     * @dev Updates the address of the Circles Hub contract.
+     * @param _hub New address for the Circles Hub contract.
+     */
+    function changeHub(address _hub) external;
+
+    /**
      * @dev Transfers governorship to a new address.
      * @param _newGovernor Address of the new governor.
      */

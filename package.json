@@ -7,7 +7,7 @@
     "test": "hardhat test",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
-    "node": "hardhat node"
+    "deploy-gnosis-test": "npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis"
   },
   "keywords": [
     "ethereum",

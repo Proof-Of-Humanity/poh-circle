@@ -2,12 +2,14 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
-import { ProofOfHumanityCirclesProxy, ProofOfHumanityMock, CoreMembersGroupMock, CrossChainProofOfHumanityMock } from "../typechain-types";
+import { ProofOfHumanityCirclesProxy, ProofOfHumanityMock, CoreMembersGroupMock, CrossChainProofOfHumanityMock, HubMock } from "../typechain-types";
+
 describe("ProofOfHumanityCirclesProxy", function () {
   let proofOfHumanityCirclesProxy: ProofOfHumanityCirclesProxy;
   let proofOfHumanityMock: ProofOfHumanityMock;
   let coreMembersGroupMock: CoreMembersGroupMock;
   let crossChainProofOfHumanityMock: CrossChainProofOfHumanityMock;
+  let hubMock: HubMock;
   let owner: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
@@ -26,11 +28,15 @@ describe("ProofOfHumanityCirclesProxy", function () {
     const CrossChainProofOfHumanityMockFactory = await ethers.getContractFactory("CrossChainProofOfHumanityMock");
     crossChainProofOfHumanityMock = await CrossChainProofOfHumanityMockFactory.deploy();
 
+    const HubMockFactory = await ethers.getContractFactory("HubMock");
+    hubMock = await HubMockFactory.deploy();
+
     const ProofOfHumanityCirclesProxyFactory = await ethers.getContractFactory("ProofOfHumanityCirclesProxy");
     proofOfHumanityCirclesProxy = await ProofOfHumanityCirclesProxyFactory.deploy(
       await proofOfHumanityMock.getAddress(),
       await coreMembersGroupMock.getAddress(),
-      await crossChainProofOfHumanityMock.getAddress()
+      await crossChainProofOfHumanityMock.getAddress(),
+      await hubMock.getAddress()
     );
 
     humanityID = "0x" + ethers.keccak256(ethers.toUtf8Bytes("test")).substring(2, 42);
@@ -65,6 +71,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       expect(await proofOfHumanityCirclesProxy.proofOfHumanity()).to.equal(await proofOfHumanityMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.coreMembersGroup()).to.equal(await coreMembersGroupMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.crossChainProofOfHumanity()).to.equal(await crossChainProofOfHumanityMock.getAddress());
+      expect(await proofOfHumanityCirclesProxy.hub()).to.equal(await hubMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.governor()).to.equal(owner.address);
     });
   });
@@ -92,6 +99,14 @@ describe("ProofOfHumanityCirclesProxy", function () {
       await proofOfHumanityCirclesProxy.connect(owner).changeCrossChainProofOfHumanity(await newCrossChainPoHMock.getAddress());
       
       expect(await proofOfHumanityCirclesProxy.crossChainProofOfHumanity()).to.equal(await newCrossChainPoHMock.getAddress());
+    });
+
+    it("Should allow governor to change Hub address", async function () {
+      const newHubMock = await (await ethers.getContractFactory("HubMock")).deploy();
+      
+      await proofOfHumanityCirclesProxy.connect(owner).changeHub(await newHubMock.getAddress());
+      
+      expect(await proofOfHumanityCirclesProxy.hub()).to.equal(await newHubMock.getAddress());
     });
 
     it("Should allow governor to transfer governorship", async function () {
@@ -124,6 +139,14 @@ describe("ProofOfHumanityCirclesProxy", function () {
       ).to.be.revertedWith("Only governor can call this function");
     });
 
+    it("Should revert when non-governor tries to change Hub address", async function () {
+      const newHubMock = await (await ethers.getContractFactory("HubMock")).deploy();
+      
+      await expect(
+        proofOfHumanityCirclesProxy.connect(user1).changeHub(await newHubMock.getAddress())
+      ).to.be.revertedWith("Only governor can call this function");
+    });
+
     it("Should revert when non-governor tries to transfer governorship", async function () {
       await expect(
         proofOfHumanityCirclesProxy.connect(user1).transferGovernorship(user2.address)
@@ -145,6 +168,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       
       expect(await coreMembersGroupMock.trustBatchWasCalled()).to.be.true;
       expect(await coreMembersGroupMock.lastTrustExpiry()).to.equal(expirationTime);
+      // ensure expiry stored in hub mock updated correctly for test (initial 0 so fine)
     });
 
     it("Should register a new account successfully when owner !isHuman (using cross-chain data)", async function () {
@@ -224,6 +248,8 @@ describe("ProofOfHumanityCirclesProxy", function () {
         proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount2)
       ).to.be.revertedWith("Account is already registered");
     });
+
+    
   });
 
   describe("RenewTrust", function () {
@@ -304,6 +330,17 @@ describe("ProofOfHumanityCirclesProxy", function () {
       await expect(
         proofOfHumanityCirclesProxy.connect(user1).renewTrust(humanityID)
       ).to.be.revertedWith("Humanity ID is not claimed");
+    });
+
+    it("Should revert if new expiry is lower than existing", async function () {
+      const circlesAccountAddr = circlesAccount;
+      const oldExpiry = expirationTime + 5000;
+      await hubMock.setExpiry(await coreMembersGroupMock.getAddress(), circlesAccountAddr, oldExpiry);
+      const lowerExpiry = expirationTime; // lower than oldExpiry
+      await proofOfHumanityMock.mockGetHumanityInfo(humanityID, {vouching:false,pendingRevocation:false,nbPendingRequests:0,expirationTime:lowerExpiry,owner:user1.address,nbRequests:1});
+      await expect(
+        proofOfHumanityCirclesProxy.connect(user1).renewTrust(humanityID)
+      ).to.be.revertedWith("Cannot decrease trust expiry");
     });
   });
 
