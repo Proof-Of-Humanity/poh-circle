@@ -13,6 +13,7 @@ import "./interfaces/IProofOfHumanity.sol";
 import "./interfaces/ICoreMembersGroup.sol";
 import "./interfaces/IProofOfHumanityCirclesProxy.sol";
 import "./interfaces/ICrossChainProofOfHumanity.sol";
+import "./interfaces/IHub.sol";
 /**
  * @title ProofOfHumanityCirclesProxy
  * @dev A proxy contract that bridges Proof of Humanity verification with Circles.
@@ -32,8 +33,25 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     /// @notice Reference to the CrossChainProofOfHumanity contract.
     ICrossChainProofOfHumanity public crossChainProofOfHumanity;
 
+    /// @notice Reference to the Circles Hub contract.
+    IHub public hub;
+
+    /// @notice Maximum number of accounts to process in a single batch in reEvaluateTrust.
+    uint256 public MaximumBatchSize;
+
     /// @notice Mapping to store the Circles account for each humanity ID.
     mapping(bytes20 => address) public humanityIDToCirclesAccount;
+
+    /// @notice Mapping to store all humanity IDs linked to a Circles account.
+    mapping(address => bytes20[]) public circlesAccountToHumanityIDs;
+
+    struct BatchEvaluationState {
+        uint256 nextIndexToProcess; // Index of the next humanityID to process
+        uint40 currentMaxExpiryTime; // Highest expiry found so far in the current evaluation
+    }
+
+    /// @notice Mapping to store the batch processing state for reEvaluateTrust.
+    mapping(address => BatchEvaluationState) public batchStates;
 
     /**
      * @dev Restricts function access to the governor only.
@@ -48,34 +66,51 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      * @dev Emitted when an account is added to the Circles Group.
      * @param humanityID The humanity ID of the account added.
      * @param account The address of the account added.
+     * @param humanityExpirationTime The expiration time of the humanity.
+     * @param trustExpiryTime The expiry time of the trust in Circles.
      */
-    event AccountRegistered(bytes20 indexed humanityID, address indexed account);
-
-    /**
-     * @dev Emitted when accounts are removed from the Circles Group.
-     * @param humanityIDs The humanity IDs of the accounts removed.
-     * @param accounts The addresses of the accounts removed.
-     * @notice HumanityID at index i corresponds to account at index i.
-     */
-    event AccountsRemoved(bytes20[] humanityIDs, address[] accounts);
+    event AccountRegistered(bytes20 indexed humanityID, address indexed account, uint40 humanityExpirationTime, uint96 trustExpiryTime);
 
     /**
      * @dev Emitted when an account is renewed in the Circles Group.
      * @param humanityID The humanity ID of the account to re-trust.
      * @param account The account that was renewed.
+     * @param newTrustExpiryTime The new expiry time of the trust.
      */
-    event TrustRenewed(bytes20 indexed humanityID, address indexed account);
+    event TrustRenewed(bytes20 indexed humanityID, address indexed account, uint96 newTrustExpiryTime);
+
+    /**
+     * @dev Emitted when a batch of trust re-evaluation is processed.
+     * @param account The account being re-evaluated.
+     * @param currentIndex The current index in the batch.
+     * @param length The total length of the batch.
+     */
+    event TrustReEvaluationBatchProcessed(address indexed account, uint256 currentIndex, uint256 length);
+
+    /**
+     * @dev Emitted when the trust re-evaluation is completed.
+     * @param account The account being re-evaluated.
+     * @param expirationTime The new expiration time of the trust.
+     */
+    event TrustReEvaluationCompleted(address indexed account, uint96 expirationTime);
 
     /**
      * @dev Initializes the proxy contract with required external contracts.
      * @param _proofOfHumanity Address of the Proof of Humanity registry contract.
      * @param _coreMembersGroup Address of the POH Core Members Group contract.
      * @param _crossChainProofOfHumanity Address of the CrossChainProofOfHumanity contract.
+     * @param _hub Address of the Circles Hub contract.
      */
-    constructor(address _proofOfHumanity, address _coreMembersGroup, address _crossChainProofOfHumanity) {
+    constructor(address _proofOfHumanity, 
+    address _coreMembersGroup, 
+    address _crossChainProofOfHumanity, 
+    address _hub, 
+    uint256 _MaximumBatchSize) {
         proofOfHumanity = IProofOfHumanity(_proofOfHumanity);
         coreMembersGroup = ICoreMembersGroup(_coreMembersGroup);
         crossChainProofOfHumanity = ICrossChainProofOfHumanity(_crossChainProofOfHumanity);
+        hub = IHub(_hub);
+        MaximumBatchSize = _MaximumBatchSize;
         governor = msg.sender; // Set deployer as initial governor
     }
 
@@ -104,6 +139,19 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      */
     function changeCrossChainProofOfHumanity(address _crossChainProofOfHumanity) external onlyGovernor {
         crossChainProofOfHumanity = ICrossChainProofOfHumanity(_crossChainProofOfHumanity);
+    }
+
+    /**
+     * @dev Updates the address of the Circles Hub contract.
+     * @param _hub New address for the Circles Hub contract.
+     * Can only be called by the governor.
+     */
+    function changeHub(address _hub) external onlyGovernor {
+        hub = IHub(_hub);
+    }
+
+    function changeMaximumBatchSize(uint256 _MaximumBatchSize) external onlyGovernor {
+        MaximumBatchSize = _MaximumBatchSize;
     }
 
     /**
@@ -139,14 +187,23 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
 
         // Only one account can be registered for a given humanity ID and is permanently bound to it.
         require(humanityIDToCirclesAccount[humanityID] == address(0), "Account is already registered");
+        // But multiple humanity IDs can be linked to the same account.
         humanityIDToCirclesAccount[humanityID] = _account;
+        circlesAccountToHumanityIDs[_account].push(humanityID);
+
         // Trust will expire at the same time as the humanity.
         address[] memory accounts = new address[](1);
         accounts[0] = _account;
-        // Function will revert if account is a zero address.
-        coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
-
-        emit AccountRegistered(humanityID, _account);
+        // If multiple humanities are linked to the same account, always use the maximum expiration time among them.
+        (, uint96 currentHubExpiry) = hub.trustMarkers(address(coreMembersGroup), _account);
+        uint96 trustExpiryTime = currentHubExpiry;
+        if(uint96(expirationTime) > currentHubExpiry){
+            // Function will revert if account is a zero address.
+            coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
+            trustExpiryTime = uint96(expirationTime);
+        }
+        
+        emit AccountRegistered(humanityID, _account, uint40(expirationTime), trustExpiryTime);
     }
     
     /**
@@ -171,29 +228,62 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         address account = humanityIDToCirclesAccount[humanityID];
         address[] memory accounts = new address[](1);
         accounts[0] = account;
-        coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
-        emit TrustRenewed(humanityID, account);
+        // Prevent decreasing expiry
+        (, uint96 currentHubExpiry) = hub.trustMarkers(address(coreMembersGroup), account);
+        if(uint96(expirationTime) > currentHubExpiry){
+            coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
+            emit TrustRenewed(humanityID, account, uint96(expirationTime));
+        }
     }
 
-  
     /**
-     * @dev Untrusts/Removes revoked accounts from the Circles Group.
-     * @param humanityIDs Humanity IDs of revoked accounts to untrust.
+     * @dev The function is use to re evaluate the trust of an account in the Circles Group after a linked humanity is revoked.
+     * Finds the maximum expiry time of all linked humanities and updates the trust of the account.
+     * @param account Address of the account to re-evaluate trust for. 
      */
-    function revokeTrust(bytes20[] memory humanityIDs) external {
-        uint256 length = humanityIDs.length;
-        bytes20 humanityID;
-        address[] memory accounts = new address[](length);
-        for(uint256 i = 0; i < length; i++){
-            humanityID = humanityIDs[i];
-            bool isHuman = crossChainProofOfHumanity.isHuman(crossChainProofOfHumanity.boundTo(humanityID));
-            require(!isHuman, "Account is still registered as human");
-            // Mapping of humanityID is not removed, so that we can still renew trust for the account.
-            accounts[i] = humanityIDToCirclesAccount[humanityID];
-        }
-        // Setting the expiry timestamp to 0 or a past timestamp means untrusting the account.
-        coreMembersGroup.trustBatchWithConditions(accounts, 0);
+    function reEvaluateTrust(address account) external {
+        BatchEvaluationState storage batchState = batchStates[account];
+        uint256 length = circlesAccountToHumanityIDs[account].length;
 
-        emit AccountsRemoved(humanityIDs, accounts);
+        uint256 startIndex = batchState.nextIndexToProcess;
+        uint40 currentMax = batchState.currentMaxExpiryTime;
+        uint256 processedInThisBatch = 0;
+
+        for (uint256 i = startIndex; i < length && processedInThisBatch < MaximumBatchSize; i++) {
+            bytes20 humanityID = circlesAccountToHumanityIDs[account][i];
+            address owner = crossChainProofOfHumanity.boundTo(humanityID);
+            uint40 expirationTime = 0;
+            if (owner != address(0)) {
+                if (proofOfHumanity.isHuman(owner)) {
+                    (,,,expirationTime,,) = proofOfHumanity.getHumanityInfo(humanityID);
+                }
+                else {
+                    ICrossChainProofOfHumanity.CrossChainHumanity memory crossChainHumanityData = crossChainProofOfHumanity.humanityData(humanityID);
+                    if (!crossChainHumanityData.isHomeChain) {
+                        expirationTime = crossChainHumanityData.expirationTime;
+                    }
+                }
+                if (expirationTime > currentMax) {
+                    currentMax = expirationTime; 
+                }
+            }
+            processedInThisBatch++;
+        }
+
+        uint256 nextIndex = startIndex + processedInThisBatch;
+
+        batchState.currentMaxExpiryTime = currentMax;
+        batchState.nextIndexToProcess = nextIndex;
+
+        emit TrustReEvaluationBatchProcessed(account, nextIndex, length);
+
+        if (nextIndex == length) {
+            address[] memory accountsToTrust = new address[](1);
+            accountsToTrust[0] = account;
+            coreMembersGroup.trustBatchWithConditions(accountsToTrust, uint96(currentMax));
+            
+            delete batchStates[account];
+            emit TrustReEvaluationCompleted(account, uint96(currentMax));
+        }
     }
 }
