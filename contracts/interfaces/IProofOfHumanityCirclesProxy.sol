@@ -26,6 +26,12 @@ interface IProofOfHumanityCirclesProxy {
     function changeCrossChainProofOfHumanity(address _crossChainProofOfHumanity) external;
 
     /**
+     * @dev Updates the address of the Circles Hub contract.
+     * @param _hub New address for the Circles Hub contract.
+     */
+    function changeHub(address _hub) external;
+
+    /**
      * @dev Transfers governorship to a new address.
      * @param _newGovernor Address of the new governor.
      */
@@ -45,8 +51,9 @@ interface IProofOfHumanityCirclesProxy {
     function renewTrust(bytes20 humanityID) external;
     
     /**
-     * @dev Untrusts/Removes accounts from the Circles Group.
-     * @param humanityIDs Humanity IDs of the expired or revoked accounts to untrust.
+     * @dev Re-evaluates the trust status of a Circles account based on its linked POH identities.
+     * Processes in batches if necessary.
+     * @param account Address of the account to re-evaluate trust for.
      */
-    function revokeTrust(bytes20[] memory humanityIDs) external;
+    function reEvaluateTrust(address account) external;
 }
