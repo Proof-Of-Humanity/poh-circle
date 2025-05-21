@@ -21,23 +21,23 @@ import "./interfaces/IHub.sol";
  */
 contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
 
-    /// @dev Address with administrative privileges.
+    /// @dev TRUSTED Address with administrative privileges.
     address public governor;
 
     /// @notice Reference to the Proof of Humanity registry contract.
     IProofOfHumanity public proofOfHumanity;
 
-    /// @notice Reference to the Core Members Group contract.
-    ICoreMembersGroup public coreMembersGroup;
-
     /// @notice Reference to the CrossChainProofOfHumanity contract.
     ICrossChainProofOfHumanity public crossChainProofOfHumanity;
 
-    /// @notice Reference to the Circles Hub contract.
+    /// @notice TRUSTED Reference to the Core Members Group contract.
+    ICoreMembersGroup public coreMembersGroup;
+
+    /// @notice TRUSTED Reference to the Circles Hub contract which stores trust records of accounts.
     IHub public hub;
 
     /// @notice Maximum number of accounts to process in a single batch in reEvaluateTrust.
-    uint256 public MaximumBatchSize;
+    uint256 public maximumBatchSize;
 
     /// @notice Mapping to store the Circles account for each humanity ID.
     mapping(bytes20 => address) public humanityIDToCirclesAccount;
@@ -90,28 +90,31 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     /**
      * @dev Emitted when the trust re-evaluation is completed.
      * @param account The account being re-evaluated.
-     * @param expirationTime The new expiration time of the trust.
+     * @param expirationTime The new expiration time of the account's trust in Circles.
      */
     event TrustReEvaluationCompleted(address indexed account, uint96 expirationTime);
 
     /**
      * @dev Initializes the proxy contract with required external contracts.
      * @param _proofOfHumanity Address of the Proof of Humanity registry contract.
-     * @param _coreMembersGroup Address of the POH Core Members Group contract.
      * @param _crossChainProofOfHumanity Address of the CrossChainProofOfHumanity contract.
+     * @param _coreMembersGroup Address of the POH Core Members Group contract.
      * @param _hub Address of the Circles Hub contract.
+     * @param _maximumBatchSize Maximum number of accounts to process in a single batch in reEvaluateTrust.
      */
-    constructor(address _proofOfHumanity, 
-    address _coreMembersGroup, 
-    address _crossChainProofOfHumanity, 
-    address _hub, 
-    uint256 _MaximumBatchSize) {
+    constructor(
+        address _proofOfHumanity,
+        address _crossChainProofOfHumanity,
+        address _coreMembersGroup,
+        address _hub,
+        uint256 _maximumBatchSize
+    ) {
+        governor = msg.sender;
         proofOfHumanity = IProofOfHumanity(_proofOfHumanity);
-        coreMembersGroup = ICoreMembersGroup(_coreMembersGroup);
         crossChainProofOfHumanity = ICrossChainProofOfHumanity(_crossChainProofOfHumanity);
+        coreMembersGroup = ICoreMembersGroup(_coreMembersGroup);
         hub = IHub(_hub);
-        MaximumBatchSize = _MaximumBatchSize;
-        governor = msg.sender; // Set deployer as initial governor
+        maximumBatchSize = _maximumBatchSize;
     }
 
     /**
@@ -150,8 +153,8 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         hub = IHub(_hub);
     }
 
-    function changeMaximumBatchSize(uint256 _MaximumBatchSize) external onlyGovernor {
-        MaximumBatchSize = _MaximumBatchSize;
+    function changeMaximumBatchSize(uint256 _maximumBatchSize) external onlyGovernor {
+        maximumBatchSize = _maximumBatchSize;
     }
 
     /**
@@ -249,7 +252,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         uint40 currentMax = batchState.currentMaxExpiryTime;
         uint256 processedInThisBatch = 0;
 
-        for (uint256 i = startIndex; i < length && processedInThisBatch < MaximumBatchSize; i++) {
+        for (uint256 i = startIndex; i < length && processedInThisBatch < maximumBatchSize; i++) {
             bytes20 humanityID = circlesAccountToHumanityIDs[account][i];
             address owner = crossChainProofOfHumanity.boundTo(humanityID);
             uint40 expirationTime = 0;

@@ -59,8 +59,8 @@ const ProofOfHumanityCirclesProxyModule = buildModule("ProofOfHumanityCirclesPro
 
   const proofOfHumanityCirclesProxy = m.contract("ProofOfHumanityCirclesProxy", [
     proofOfHumanity,
-    coreMembersGroup,
     crossChainProofOfHumanity,
+    coreMembersGroup,
     circlesHub,
     maximumBatchSize
   ]);

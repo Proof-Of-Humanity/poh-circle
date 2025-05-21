@@ -45,8 +45,8 @@ describe("ProofOfHumanityCirclesProxy", function () {
     const ProofOfHumanityCirclesProxyFactory = await ethers.getContractFactory("ProofOfHumanityCirclesProxy");
     proofOfHumanityCirclesProxy = await ProofOfHumanityCirclesProxyFactory.deploy(
       await proofOfHumanityMock.getAddress(),
-      await coreMembersGroupMock.getAddress(),
       await crossChainProofOfHumanityMock.getAddress(),
+      await coreMembersGroupMock.getAddress(),
       await hubMock.getAddress(),
       30 // Default MaximumBatchSize
     );
@@ -105,7 +105,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       expect(await proofOfHumanityCirclesProxy.crossChainProofOfHumanity()).to.equal(await crossChainProofOfHumanityMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.hub()).to.equal(await hubMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.governor()).to.equal(owner.address);
-      expect(await proofOfHumanityCirclesProxy.MaximumBatchSize()).to.equal(30);
+      expect(await proofOfHumanityCirclesProxy.maximumBatchSize()).to.equal(30);
     });
   });
 
@@ -147,7 +147,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       
       await proofOfHumanityCirclesProxy.changeMaximumBatchSize(newBatchSize);
       
-      expect(await proofOfHumanityCirclesProxy.MaximumBatchSize()).to.equal(newBatchSize);
+      expect(await proofOfHumanityCirclesProxy.maximumBatchSize()).to.equal(newBatchSize);
     });
 
     it("Should allow governor to transfer governorship", async function () {
