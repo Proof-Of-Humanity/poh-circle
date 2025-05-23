@@ -153,6 +153,11 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         hub = IHub(_hub);
     }
 
+    /**
+     * @dev Updates the maximum batch size for re-evaluation.
+     * @param _maximumBatchSize New maximum batch size.
+     * Can only be called by the governor.
+     */
     function changeMaximumBatchSize(uint256 _maximumBatchSize) external onlyGovernor {
         maximumBatchSize = _maximumBatchSize;
     }
