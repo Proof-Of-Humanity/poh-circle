@@ -6,15 +6,16 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { 
   ProofOfHumanityCirclesProxy, 
   ProofOfHumanityMock, 
-  CoreMembersGroupMock, 
+  BaseGroupMock, 
   CrossChainProofOfHumanityMock, 
   HubMock 
 } from "../typechain-types";
 
+
 describe("ProofOfHumanityCirclesProxy", function () {
   let proofOfHumanityCirclesProxy: ProofOfHumanityCirclesProxy;
   let proofOfHumanityMock: ProofOfHumanityMock;
-  let coreMembersGroupMock: CoreMembersGroupMock;
+  let baseGroupMock: BaseGroupMock;
   let crossChainProofOfHumanityMock: CrossChainProofOfHumanityMock;
   let hubMock: HubMock;
   let owner: SignerWithAddress;
@@ -33,8 +34,8 @@ describe("ProofOfHumanityCirclesProxy", function () {
     const ProofOfHumanityMockFactory = await ethers.getContractFactory("ProofOfHumanityMock");
     proofOfHumanityMock = await ProofOfHumanityMockFactory.deploy();
 
-    const CoreMembersGroupMockFactory = await ethers.getContractFactory("CoreMembersGroupMock");
-    coreMembersGroupMock = await CoreMembersGroupMockFactory.deploy();
+    const BaseGroupMockFactory = await ethers.getContractFactory("BaseGroupMock");
+    baseGroupMock = await BaseGroupMockFactory.deploy();
 
     const CrossChainProofOfHumanityMockFactory = await ethers.getContractFactory("CrossChainProofOfHumanityMock");
     crossChainProofOfHumanityMock = await CrossChainProofOfHumanityMockFactory.deploy();
@@ -46,12 +47,12 @@ describe("ProofOfHumanityCirclesProxy", function () {
     proofOfHumanityCirclesProxy = await ProofOfHumanityCirclesProxyFactory.deploy(
       await proofOfHumanityMock.getAddress(),
       await crossChainProofOfHumanityMock.getAddress(),
-      await coreMembersGroupMock.getAddress(),
+      await baseGroupMock.getAddress(),
       await hubMock.getAddress(),
       30 // Default MaximumBatchSize
     );
 
-    await (coreMembersGroupMock as CoreMembersGroupMock).setHub(await hubMock.getAddress()); 
+    await baseGroupMock.setHub(await hubMock.getAddress()); 
 
     humanityID = "0x" + ethers.keccak256(ethers.toUtf8Bytes("test")).substring(2, 42);
     expirationTime = Math.floor(Date.now() / 1000) + 3600;
@@ -59,14 +60,14 @@ describe("ProofOfHumanityCirclesProxy", function () {
     humanityID2 = "0x" + ethers.keccak256(ethers.toUtf8Bytes("test2")).substring(2, 42);
     user2Expiration = expirationTime + 7200;
 
-    return { proofOfHumanityCirclesProxy, proofOfHumanityMock, coreMembersGroupMock, crossChainProofOfHumanityMock, hubMock, owner, governor, user1, user2 };
+    return { proofOfHumanityCirclesProxy, proofOfHumanityMock, baseGroupMock, crossChainProofOfHumanityMock, hubMock, owner, governor, user1, user2 };
   }
 
   beforeEach(async function () {
     const fixture = await loadFixture(deployFixture);
     proofOfHumanityCirclesProxy = fixture.proofOfHumanityCirclesProxy;
     proofOfHumanityMock = fixture.proofOfHumanityMock;
-    coreMembersGroupMock = fixture.coreMembersGroupMock;
+    baseGroupMock = fixture.baseGroupMock;
     crossChainProofOfHumanityMock = fixture.crossChainProofOfHumanityMock;
     hubMock = fixture.hubMock;
     owner = fixture.owner;
@@ -95,13 +96,13 @@ describe("ProofOfHumanityCirclesProxy", function () {
     };
     await crossChainProofOfHumanityMock.mockHumanityData(humanityID, crossChainHumanityData);
 
-    await coreMembersGroupMock.reset();
+    await baseGroupMock.reset();
   });
 
   describe("Constructor", function () {
     it("Should initialize with correct values", async function () {
       expect(await proofOfHumanityCirclesProxy.proofOfHumanity()).to.equal(await proofOfHumanityMock.getAddress());
-      expect(await proofOfHumanityCirclesProxy.coreMembersGroup()).to.equal(await coreMembersGroupMock.getAddress());
+      expect(await proofOfHumanityCirclesProxy.baseGroup()).to.equal(await baseGroupMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.crossChainProofOfHumanity()).to.equal(await crossChainProofOfHumanityMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.hub()).to.equal(await hubMock.getAddress());
       expect(await proofOfHumanityCirclesProxy.governor()).to.equal(owner.address);
@@ -119,11 +120,11 @@ describe("ProofOfHumanityCirclesProxy", function () {
     });
 
     it("Should allow governor to change Core Members Group address", async function () {
-      const newCoreMembersGroupMock = await (await ethers.getContractFactory("CoreMembersGroupMock")).deploy();
+      const newBaseGroupMock = await (await ethers.getContractFactory("BaseGroupMock")).deploy();
       
-      await proofOfHumanityCirclesProxy.connect(owner).changeCoreMembersGroup(await newCoreMembersGroupMock.getAddress());
+      await proofOfHumanityCirclesProxy.connect(owner).changeBaseGroup(await newBaseGroupMock.getAddress());
       
-      expect(await proofOfHumanityCirclesProxy.coreMembersGroup()).to.equal(await newCoreMembersGroupMock.getAddress());
+      expect(await proofOfHumanityCirclesProxy.baseGroup()).to.equal(await newBaseGroupMock.getAddress());
     });
 
     it("Should allow governor to change CrossChainProofOfHumanity address", async function () {
@@ -165,10 +166,10 @@ describe("ProofOfHumanityCirclesProxy", function () {
     });
 
     it("Should revert when non-governor tries to change Core Members Group address", async function () {
-      const newCoreMembersGroupMock = await (await ethers.getContractFactory("CoreMembersGroupMock")).deploy();
+      const newBaseGroupMock = await (await ethers.getContractFactory("BaseGroupMock")).deploy();
       
       await expect(
-        proofOfHumanityCirclesProxy.connect(user1).changeCoreMembersGroup(await newCoreMembersGroupMock.getAddress())
+        proofOfHumanityCirclesProxy.connect(user1).changeBaseGroup(await newBaseGroupMock.getAddress())
       ).to.be.revertedWith("Only governor can call this function");
     });
 
@@ -213,7 +214,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
   
       expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount);
       
-      const [, expiry] = await hubMock.trustMarkers(await coreMembersGroupMock.getAddress(), circlesAccount);
+      const [, expiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(expiry).to.equal(expirationTime);
     });
 
@@ -225,7 +226,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
         .withArgs(humanityID, circlesAccount,expirationTime ,expirationTime);
   
       expect(await proofOfHumanityCirclesProxy.humanityIDToCirclesAccount(humanityID)).to.equal(circlesAccount);
-      const [, expiry] = await hubMock.trustMarkers(await coreMembersGroupMock.getAddress(), circlesAccount);
+      const [, expiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(expiry).to.equal(expirationTime);
     });
 
@@ -278,14 +279,14 @@ describe("ProofOfHumanityCirclesProxy", function () {
       
       await proofOfHumanityCirclesProxy.connect(user2).register(humanityID2, circlesAccount);
 
-      let [, hubExpiry] = await hubMock.trustMarkers(await coreMembersGroupMock.getAddress(), circlesAccount);
+      let [, hubExpiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(hubExpiry).to.equal(user2Expiration);
 
       const tx = await proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount);
       await expect(tx)
         .to.emit(proofOfHumanityCirclesProxy, "AccountRegistered")
         .withArgs(humanityID, circlesAccount, expirationTime, user2Expiration);
-      [, hubExpiry] = await hubMock.trustMarkers(await coreMembersGroupMock.getAddress(), circlesAccount);
+      [, hubExpiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(hubExpiry).to.equal(user2Expiration);
       expect(hubExpiry).to.not.equal(expirationTime);
     });
@@ -296,7 +297,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
     beforeEach(async function () {
       circlesAccount = user1.address; 
       await proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount);
-      await coreMembersGroupMock.reset();
+      await baseGroupMock.reset();
     });
     
     it("Should renew trust successfully when owner isHuman on POH", async function () {
@@ -396,7 +397,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
     beforeEach(async function () {
       circlesAccount = user1.address;
       await proofOfHumanityCirclesProxy.connect(user1).register(humanityID, circlesAccount);
-      await coreMembersGroupMock.reset();
+      await baseGroupMock.reset();
     });
 
     it("Should re-evaluate trust correctly when the single ID is revoked", async function () { 
@@ -406,14 +407,14 @@ describe("ProofOfHumanityCirclesProxy", function () {
       await expect(tx1).to.emit(proofOfHumanityCirclesProxy, "TrustReEvaluationBatchProcessed").withArgs(circlesAccount, 1, 1);
 
       await expect(tx1).to.emit(proofOfHumanityCirclesProxy, "TrustReEvaluationCompleted").withArgs(circlesAccount,0);
-      const [, finalExpiry] = await hubMock.trustMarkers(await proofOfHumanityCirclesProxy.getAddress(), circlesAccount);
+      const [, finalExpiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(finalExpiry).to.equal(0); 
     });
 
     it("Should correctly determine max expiration between local and cross-chain", async function () {
       
       await proofOfHumanityCirclesProxy.reEvaluateTrust(circlesAccount);
-      let [, expiry] = await hubMock.trustMarkers(await coreMembersGroupMock.getAddress(), circlesAccount);
+      let [, expiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(expiry).to.equal(expirationTime); 
 
       
@@ -430,7 +431,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       await crossChainProofOfHumanityMock.mockBoundTo(humanityID, user1.address); 
 
       await proofOfHumanityCirclesProxy.reEvaluateTrust(circlesAccount);
-      [, expiry] = await hubMock.trustMarkers(await coreMembersGroupMock.getAddress(), circlesAccount);
+      [, expiry] = await hubMock.trustMarkers(await baseGroupMock.getAddress(), circlesAccount);
       expect(expiry).to.equal(crossChainExpiration); 
     });
 

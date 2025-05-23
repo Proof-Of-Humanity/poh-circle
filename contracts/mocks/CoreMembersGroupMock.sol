@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "../../contracts/interfaces/ICoreMembersGroup.sol";
+import "../../contracts/interfaces/IBaseGroup.sol";
 import "./HubMock.sol";
 
-contract CoreMembersGroupMock is ICoreMembersGroup {
+contract BaseGroupMock is IBaseGroup {
     bool public trustBatchWasCalled;
     address[] public lastTrustedMembers;
     uint96 public lastTrustExpiry;
@@ -12,16 +12,16 @@ contract CoreMembersGroupMock is ICoreMembersGroup {
     address[] private _lastCalledMembers;
     uint96 private _lastCalledExpiry;
 
-    function trustBatchWithConditions(address[] memory _coreMembers, uint96 _expiry) external override {
+    function trustBatchWithConditions(address[] memory _members, uint96 _expiry) external override {
         trustBatchWasCalled = true;
-        lastTrustedMembers = _coreMembers;
+        lastTrustedMembers = _members;
         lastTrustExpiry = _expiry;
-        _lastCalledMembers = _coreMembers;
+        _lastCalledMembers = _members;
         _lastCalledExpiry = _expiry;
 
         if (address(hub) != address(0)) {
-            for (uint i = 0; i < _coreMembers.length; i++) {
-                hub.setExpiry(address(this), _coreMembers[i], _expiry);
+            for (uint i = 0; i < _members.length; i++) {
+                hub.setExpiry(address(this), _members[i], _expiry);
             }
         }
     }

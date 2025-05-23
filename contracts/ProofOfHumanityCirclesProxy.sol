@@ -10,14 +10,14 @@
 pragma solidity >=0.8.28;
 
 import "./interfaces/IProofOfHumanity.sol";
-import "./interfaces/ICoreMembersGroup.sol";
+import "./interfaces/IBaseGroup.sol";
 import "./interfaces/IProofOfHumanityCirclesProxy.sol";
 import "./interfaces/ICrossChainProofOfHumanity.sol";
 import "./interfaces/IHub.sol";
 /**
  * @title ProofOfHumanityCirclesProxy
  * @dev A proxy contract that bridges Proof of Humanity verification with Circles.
- * This contract allows Proof of Humanity Users to register in POH Core Members Group.
+ * This contract allows Proof of Humanity Users to register in POH Group.
  */
 contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
 
@@ -30,8 +30,8 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     /// @notice Reference to the CrossChainProofOfHumanity contract.
     ICrossChainProofOfHumanity public crossChainProofOfHumanity;
 
-    /// @notice TRUSTED Reference to the Core Members Group contract.
-    ICoreMembersGroup public coreMembersGroup;
+    /// @notice TRUSTED Reference to the Group contract.
+    IBaseGroup public baseGroup;
 
     /// @notice TRUSTED Reference to the Circles Hub contract which stores trust records of accounts.
     IHub public hub;
@@ -98,21 +98,21 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
      * @dev Initializes the proxy contract with required external contracts.
      * @param _proofOfHumanity Address of the Proof of Humanity registry contract.
      * @param _crossChainProofOfHumanity Address of the CrossChainProofOfHumanity contract.
-     * @param _coreMembersGroup Address of the POH Core Members Group contract.
+     * @param _baseGroup Address of the POH Group contract.
      * @param _hub Address of the Circles Hub contract.
      * @param _maximumBatchSize Maximum number of accounts to process in a single batch in reEvaluateTrust.
      */
     constructor(
         address _proofOfHumanity,
         address _crossChainProofOfHumanity,
-        address _coreMembersGroup,
+        address _baseGroup,
         address _hub,
         uint256 _maximumBatchSize
     ) {
         governor = msg.sender;
         proofOfHumanity = IProofOfHumanity(_proofOfHumanity);
         crossChainProofOfHumanity = ICrossChainProofOfHumanity(_crossChainProofOfHumanity);
-        coreMembersGroup = ICoreMembersGroup(_coreMembersGroup);
+        baseGroup = IBaseGroup(_baseGroup);
         hub = IHub(_hub);
         maximumBatchSize = _maximumBatchSize;
     }
@@ -127,12 +127,12 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     }
 
     /**
-     * @dev Updates the address of the POH Core Members Group contract.
-     * @param _coreMembersGroup New address for the POH Core Members Group contract.
+     * @dev Updates the address of the Group contract.
+     * @param _baseGroup New address for the Group contract.
      * Can only be called by the governor.
      */
-    function changeCoreMembersGroup(address _coreMembersGroup) external onlyGovernor {
-        coreMembersGroup = ICoreMembersGroup(_coreMembersGroup);
+    function changeBaseGroup(address _baseGroup) external onlyGovernor {
+        baseGroup = IBaseGroup(_baseGroup);
     }
 
     /**
@@ -169,7 +169,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
     /**
      * @dev Trusts/Adds an account in the Circles Group.
      * @param humanityID The humanity ID of the account to trust.
-     * @param _account Address of the circles account to trust in POH group.
+     * @param _account Address of the circles account to trust in POH Group.
      */
     function register(bytes20 humanityID, address _account) external {
         uint40 expirationTime;
@@ -198,11 +198,11 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         address[] memory accounts = new address[](1);
         accounts[0] = _account;
         // If multiple humanities are linked to the same account, always use the maximum expiration time among them.
-        (, uint96 currentHubExpiry) = hub.trustMarkers(address(coreMembersGroup), _account);
+        (, uint96 currentHubExpiry) = hub.trustMarkers(address(baseGroup), _account);
         uint96 trustExpiryTime = currentHubExpiry;
         if(uint96(expirationTime) > currentHubExpiry){
             // Function will revert if account is a zero address.
-            coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
+            baseGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
             trustExpiryTime = uint96(expirationTime);
         }
         
@@ -231,10 +231,10 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         address account = humanityIDToCirclesAccount[humanityID];
         address[] memory accounts = new address[](1);
         accounts[0] = account;
-        // Prevent decreasing expiry
-        (, uint96 currentHubExpiry) = hub.trustMarkers(address(coreMembersGroup), account);
+        // Prevent decreasing expiry.
+        (, uint96 currentHubExpiry) = hub.trustMarkers(address(baseGroup), account);
         if(uint96(expirationTime) > currentHubExpiry){
-            coreMembersGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
+            baseGroup.trustBatchWithConditions(accounts, uint96(expirationTime));
             emit TrustRenewed(humanityID, account, uint96(expirationTime));
         }
     }
@@ -283,7 +283,7 @@ contract ProofOfHumanityCirclesProxy is IProofOfHumanityCirclesProxy {
         if (nextIndex == length) {
             address[] memory accountsToTrust = new address[](1);
             accountsToTrust[0] = account;
-            coreMembersGroup.trustBatchWithConditions(accountsToTrust, uint96(currentMax));
+            baseGroup.trustBatchWithConditions(accountsToTrust, uint96(currentMax));
             
             delete batchStates[account];
             emit TrustReEvaluationCompleted(account, uint96(currentMax));
