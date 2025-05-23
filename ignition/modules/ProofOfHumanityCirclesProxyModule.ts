@@ -7,7 +7,7 @@ interface ContractAddresses {
   proofOfHumanity: string;
   crossChainProofOfHumanity: string;
   circlesHub: string;
-  coreMembersGroup: string;
+  baseGroup: string;
   maximumBatchSize: number;
 }
 
@@ -37,13 +37,13 @@ const ProofOfHumanityCirclesProxyModule = buildModule("ProofOfHumanityCirclesPro
 
   const {
     proofOfHumanity,
-    coreMembersGroup,
+    baseGroup,
     crossChainProofOfHumanity,
     circlesHub,
     maximumBatchSize
   } = deployAddresses;
 
-  if (!proofOfHumanity || !coreMembersGroup || !crossChainProofOfHumanity || !circlesHub) {
+  if (!proofOfHumanity || !baseGroup || !crossChainProofOfHumanity || !circlesHub) {
     const errorMessage = `Error: One or more dependent contract addresses are missing in config file ${absoluteConfigPath} for network '${hre.network.name}'.`;
     console.error(errorMessage);
     throw new Error(errorMessage);
@@ -53,14 +53,14 @@ const ProofOfHumanityCirclesProxyModule = buildModule("ProofOfHumanityCirclesPro
   console.log(`Using configuration from: ${absoluteConfigPath}`); 
   console.log('Constructor arguments:');
   console.log(`  _proofOfHumanity: ${proofOfHumanity}`);
-  console.log(`  _coreMembersGroup: ${coreMembersGroup}`);
+  console.log(`  _baseGroup: ${baseGroup}`);
   console.log(`  _crossChainProofOfHumanity: ${crossChainProofOfHumanity}`);
   console.log(`  _hub: ${circlesHub}`);
 
   const proofOfHumanityCirclesProxy = m.contract("ProofOfHumanityCirclesProxy", [
     proofOfHumanity,
     crossChainProofOfHumanity,
-    coreMembersGroup,
+    baseGroup,
     circlesHub,
     maximumBatchSize
   ]);

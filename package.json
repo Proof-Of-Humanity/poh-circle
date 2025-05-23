@@ -7,7 +7,7 @@
     "test": "hardhat test",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
-    "deploy:poh-circles": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-circles.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis",
+    "deploy:poh-test-circles": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-test-circles.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis",
     "deploy:poh-test-rings": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-test-rings.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis"
   },
   "keywords": [
@@ -28,5 +28,6 @@
   },
   "dependencies": {
     "typechain": "^8.3.2"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

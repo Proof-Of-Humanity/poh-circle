@@ -14,10 +14,10 @@ interface IProofOfHumanityCirclesProxy {
     function changeProofOfHumanity(address _proofOfHumanity) external;
     
     /**
-     * @dev Updates the address of the Core Members Group contract.
-     * @param _coreMembersGroup New address for the Core Members Group contract.
+     * @dev Updates the address of the Group contract.
+     * @param _baseGroup New address for the Group contract.
      */
-    function changeCoreMembersGroup(address _coreMembersGroup) external;
+    function changeBaseGroup(address _baseGroup) external;
 
     /**
      * @dev Updates the address of the CrossChainProofOfHumanity contract.
