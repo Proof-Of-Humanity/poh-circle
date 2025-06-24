@@ -22,4 +22,10 @@ contract HubMock is IHub {
         // previous value is irrelevant for tests, return zero
         return (address(0), expiries[truster][trustee]);
     }
+
+    function isHuman(address user) external view returns (bool) {
+        uint96 expiry = expiries[address(this)][user];
+        return expiry > 0 && expiry > block.timestamp;
+    }
+
 }
