@@ -8,7 +8,8 @@
     "compile": "hardhat compile",
     "clean": "hardhat clean",
     "deploy:poh-test-circles": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-test-circles.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis",
-    "deploy:poh-test-rings": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-test-rings.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis"
+    "deploy:poh-test-rings": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-test-rings.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network gnosis",
+    "deploy:chiado": "cross-env POH_CIRCLES_PROXY_CONFIG_PATH=./config/poh-chiado-mocks.json npx hardhat ignition deploy ./ignition/modules/ProofOfHumanityCirclesProxyModule.ts --network chiado"
   },
   "keywords": [
     "ethereum",
