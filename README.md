@@ -91,7 +91,6 @@ The project includes:
 - **Hardhat** for development and testing
 - **TypeScript** support with strict type checking
 - **TypeChain** for type-safe contract interactions
-- **OpenZeppelin** contracts for security standards
 - **Mock contracts** for isolated testing
 
 ### Network Configuration
