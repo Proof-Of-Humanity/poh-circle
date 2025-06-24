@@ -459,10 +459,7 @@ describe("ProofOfHumanityCirclesProxy", function () {
       const batch_size = 30; // Match the default MaximumBatchSize
       let tx;
       for(let i = 0; i < numOfHumanities/batch_size; i++){
-        // Get transaction receipt to calculate gas used
         tx = await proofOfHumanityCirclesProxy.reEvaluateTrust(circlesAccount);
-        const receipt = await tx.wait();
-        console.log(`Batch ${i+1} gas used: ${receipt?.gasUsed.toString()}`);
 
         await expect(tx).to.emit(proofOfHumanityCirclesProxy, "TrustReEvaluationBatchProcessed").withArgs(circlesAccount,Math.min((i+1)*batch_size,numOfHumanities ),numOfHumanities);
       }
